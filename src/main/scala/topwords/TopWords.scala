@@ -1,33 +1,39 @@
 package edu.luc.cs.cs371.topwords
 
-import mainargs.{main, arg}
+import scala.collection.immutable.Queue
 
-@main
-def topwords(
-  @arg(short = 'c', doc = "Size of the word cloud (number of top words to show)")
-  cloudSize: Int = 10,
-  @arg(short = 'l', doc = "Minimum word length to consider")
-  lengthAtLeast: Int = 6,
-  @arg(short = 'w', doc = "Size of moving window of words")
-  windowSize: Int = 1000
-): Unit =
-  val consoleObserver = new ConsoleObserver(cloudSize)
-  val tracker = WordFrequencyTracker(lengthAtLeast, windowSize, consoleObserver)
+/** Data type for a word with its frequency count. */
+case class WordFreq(word: String, frequency: Int):
+  override def toString: String = s"$word: $frequency"
 
-  val lines = scala.io.Source.stdin.getLines()
-  val words = lines.flatMap(line =>
-    line.split("(?U)[^\\p{Alpha}0-9']+").filter(_.nonEmpty)
-  )
+/** CanEqual instance for WordFreq to support strict equality. */
+given CanEqual[WordFreq, WordFreq] = CanEqual.derived
 
-  try
-    for word <- words do
-      tracker.processWord(word)
-  catch
-    case _: java.io.IOException =>
-      // Handle SIGPIPE gracefully
+/**
+ * Abstract trait defining the purely functional pipeline operations
+ * for computing top-word clouds from a stream of text.
+ *
+ * Implementations must be purely functional with no mutable state.
+ */
+trait TopWords:
 
-class ConsoleObserver(cloudSize: Int) extends Observer:
-  def onStats(stats: WordCloudStats): Unit =
-    val cloud = CloudBuilder.buildCloud(stats.wordCounts, cloudSize)
-    if cloud.nonEmpty then
-      println(CloudBuilder.formatCloud(cloud))
+  /** Split lines of text into individual word tokens. */
+  def splitWords(lines: Iterator[String]): Iterator[String]
+
+  /** Filter words by minimum length and normalize to lowercase. */
+  def filterByLength(words: Iterator[String], minLength: Int): Iterator[String]
+
+  /**
+   * Compute word frequency counts over a sliding window of words.
+   * Uses Iterator.scanLeft over an immutable (Queue, Map) state.
+   * Emits a Map[String, Int] for each step once the window is full.
+   */
+  def slidingWordCounts(words: Iterator[String], windowSize: Int): Iterator[Map[String, Int]]
+
+  /** Build a word cloud from frequency counts, sorted by descending frequency. */
+  def buildCloud(wordCounts: Map[String, Int], cloudSize: Int): Seq[WordFreq]
+
+  /** Format a word cloud as a single-line string. */
+  def formatCloud(cloud: Seq[WordFreq]): String
+
+end TopWords
