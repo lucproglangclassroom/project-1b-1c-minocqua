@@ -38,7 +38,7 @@ class TopWordsFunctional extends TopWords:
           (trimmedQueue, trimmedCounts)
         else
           (newQueue, newCounts)
-      .filter((queue, _) => queue.size == windowSize)
+      .filter((queue, _) => queue.size >= windowSize)
       .map((_, counts) => counts)
 
   def buildCloud(wordCounts: Map[String, Int], cloudSize: Int): Seq[WordFreq] =
