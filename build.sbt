@@ -1,4 +1,4 @@
-name := "echotest-scala"
+name := "topwords"
 
 version := "0.4"
 
